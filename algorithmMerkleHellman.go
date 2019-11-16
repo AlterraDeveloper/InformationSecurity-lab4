@@ -2,6 +2,8 @@ package main
 
 import (
 	"math/rand"
+	"os"
+	"strconv"
 )
 
 //PrivateKey закрытый ключ
@@ -18,14 +20,29 @@ func (key *PrivateKey) Generate(keyLength int) {
 	key.X = uint64(rand.Int63n(int64(key.M/2)) + 2)
 }
 
-//GeneratePublicKey returns public key for private key
-func (key PrivateKey) GeneratePublicKey() []uint64 {
+func (key PrivateKey) generatePublicKey() []uint64 {
 	var publicKey []uint64
 
 	for _, w := range key.W {
 		publicKey = append(publicKey, (w*key.X)%key.M)
 	}
 
+	return publicKey
+}
+
+//SavePublicKeyToFile saves generated public key to file and return it
+func (key PrivateKey) SavePublicKeyToFile(fileName string) []uint64 {
+
+	file, _ := os.Create(fileName)
+
+	publicKey := key.generatePublicKey()
+
+	for _, value := range publicKey {
+		var buffer []byte
+		buffer = strconv.AppendUint(buffer, value, 10)
+		_, _ = file.Write(buffer)
+		file.WriteString(" ")
+	}
 	return publicKey
 }
 
