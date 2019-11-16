@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"math/rand"
 	"os"
 	"strconv"
@@ -17,7 +18,7 @@ type PrivateKey struct {
 func (key *PrivateKey) Generate(keyLength int) {
 	key.W = generateW(keyLength)
 	key.M = generateM(Sum(key.W))
-	key.X = uint64(rand.Int63n(int64(key.M/2)) + 2)
+	key.X = uint64(rand.Int63n(int64(key.M/2))) + 2
 }
 
 func (key PrivateKey) generatePublicKey() []uint64 {
@@ -44,6 +45,66 @@ func (key PrivateKey) SavePublicKeyToFile(fileName string) []uint64 {
 		file.WriteString(" ")
 	}
 	return publicKey
+}
+
+//Encrypt text
+func Encrypt(originalText string, publicKey []uint64) []uint64 {
+
+	// var encryptedText string
+
+	keyLength := len(publicKey)
+
+	increasedText := IncreaseText(originalText, keyLength)
+
+	bitsStream := RunesToBits([]rune(increasedText))
+
+	var encryptedNums []uint64
+
+	for i := 0; i < len(bitsStream); i += keyLength {
+		block := bitsStream[i : i+keyLength]
+
+		var sum uint64 = 0
+		for i, bit := range block {
+			if bit == rune('1') {
+				sum += publicKey[i]
+			}
+		}
+
+		encryptedNums = append(encryptedNums, sum)
+	}
+
+	return encryptedNums
+}
+
+//Decrypt nums to text
+func Decrypt(nums []uint64, privateKey PrivateKey) string {
+
+	var bitsStream string
+
+	y := XGCDIterative(int64(privateKey.M), int64(privateKey.X))
+	// y = 442
+	fmt.Println(((privateKey.X * uint64(y)) % privateKey.M) == 1)
+	fmt.Println(GCDIterative(privateKey.M, privateKey.X) == 1)
+	fmt.Printf("Y = %v\n", y)
+	for _, value := range nums {
+		var bits string
+		tmp := (value * uint64(y)) % privateKey.M
+		for i := range privateKey.W {
+			current := privateKey.W[len(privateKey.W)-1-i]
+			if tmp >= current {
+				bits += "1"
+				tmp -= current
+			} else {
+				bits += "0"
+			}
+		}
+		bits = Reverse(bits)
+		// fmt.Println(bits)
+
+		bitsStream += bits
+	}
+
+	return string(BitsToRunes(bitsStream))
 }
 
 func generateW(length int) []uint64 {
