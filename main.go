@@ -26,8 +26,6 @@ func main() {
 
 	var privateKey PrivateKey
 	privateKey.Generate(keyLength)
-	// privateKey = PrivateKey{W: []uint64{2, 7, 11, 21, 42, 89, 180, 354}, M: 881, X: 588}
-	// privateKey = PrivateKey{W: []uint64{1, 2, 4, 9, 20, 38, 75, 150}, M: 311, X: 52}
 	publicKey := privateKey.SavePublicKeyToFile("public.txt")
 
 	fmt.Println("Ключи успешно сгенерированы")
@@ -36,11 +34,21 @@ func main() {
 
 	scanner := bufio.NewScanner(os.Stdin)
 	fmt.Print("Введите текст : ")
-	scanner.Scan() // use `for scanner.Scan()` to keep reading
+	scanner.Scan()
 	text := scanner.Text()
 
 	encryptionResult := Encrypt(text, publicKey)
+	encryptionResultString := IntSliceToString(encryptionResult)
+
 	fmt.Printf("Зашифрованный текст : %v\n", encryptionResult)
+	fmt.Printf("Зашифрованный текст как строка : %v\n", encryptionResultString)
 	fmt.Printf("Расшифрованный текст : %v\n", Decrypt(encryptionResult, privateKey))
+
+	fmt.Printf("Зашифрованный текст в числовом виде : %v\n", StringToIntSlice(encryptionResultString))
+	//добавить в метод чтения из файла
+	// file, _ := os.Open("public.txt")
+	// bytes := make([]byte, 2000000, 2000000)
+	// bytesRead, _ := file.Read(bytes)
+	// fmt.Printf("Bytes = %v\n", string(bytes[:bytesRead]))
 
 }

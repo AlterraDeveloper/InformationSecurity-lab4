@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"math/rand"
 	"os"
 	"strconv"
@@ -43,6 +42,7 @@ func (key PrivateKey) SavePublicKeyToFile(fileName string) []uint64 {
 		buffer = strconv.AppendUint(buffer, value, 10)
 		_, _ = file.Write(buffer)
 		file.WriteString(" ")
+
 	}
 	return publicKey
 }
@@ -61,6 +61,7 @@ func Encrypt(originalText string, publicKey []uint64) []uint64 {
 	var encryptedNums []uint64
 
 	for i := 0; i < len(bitsStream); i += keyLength {
+
 		block := bitsStream[i : i+keyLength]
 
 		var sum uint64 = 0
@@ -81,30 +82,28 @@ func Decrypt(nums []uint64, privateKey PrivateKey) string {
 
 	var bitsStream string
 
-	y := XGCDIterative(int64(privateKey.M), int64(privateKey.X))
-	// y = 442
-	fmt.Println(((privateKey.X * uint64(y)) % privateKey.M) == 1)
-	fmt.Println(GCDIterative(privateKey.M, privateKey.X) == 1)
-	fmt.Printf("Y = %v\n", y)
-	for _, value := range nums {
-		var bits string
-		tmp := (value * uint64(y)) % privateKey.M
-		for i := range privateKey.W {
-			current := privateKey.W[len(privateKey.W)-1-i]
-			if tmp >= current {
-				bits += "1"
-				tmp -= current
-			} else {
-				bits += "0"
+	y := InverseByMod(privateKey.X, privateKey.M)
+
+	if (privateKey.X*y)%privateKey.M == 1 {
+		for _, value := range nums {
+			var bits string
+			tmp := (value * y) % privateKey.M
+			for i := range privateKey.W {
+				current := privateKey.W[len(privateKey.W)-1-i]
+				if tmp >= current {
+					bits += "1"
+					tmp -= current
+				} else {
+					bits += "0"
+				}
 			}
+			bits = Reverse(bits)
+			bitsStream += bits
 		}
-		bits = Reverse(bits)
-		// fmt.Println(bits)
 
-		bitsStream += bits
+		return string(BitsToRunes(bitsStream))
 	}
-
-	return string(BitsToRunes(bitsStream))
+	return "Не удалось расшифровать..."
 }
 
 func generateW(length int) []uint64 {

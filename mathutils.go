@@ -1,6 +1,8 @@
 package main
 
-import "math"
+import (
+	"math"
+)
 
 //NumberIsSimple checks number on simplicity
 func NumberIsSimple(number uint64) bool {
@@ -32,28 +34,48 @@ func GCDIterative(u, v uint64) uint64 {
 }
 
 //XGCDIterative made with Extended Euclid's Algorithm
-func XGCDIterative(a, b int64) int64 {
-	var aa [2]int64 = [2]int64{1, 0}
-	var bb [2]int64 = [2]int64{0, 1}
-	var q int64
+func XGCDIterative(a, b int64) (int64, int64, int64) {
 
-	for {
-		q = a / b
-		a = a % b
-		aa[0] = aa[0] - q*aa[1]
-		bb[0] = bb[0] - q*bb[1]
+	var q, r, x1, x2, y1, y2 int64
 
-		if a == 0 {
-			return int64(math.Max(float64(aa[1]), float64(bb[1])))
-		}
-
-		q = b / a
-		b = b % a
-		aa[1] = aa[1] - q*aa[0]
-		bb[1] = bb[1] - q*bb[0]
-
-		if b == 0 {
-			return int64(math.Max(float64(aa[0]), float64(bb[0])))
-		}
+	if b == 0 {
+		return 1, 0, a
 	}
+
+	x1 = 0
+	x2 = 1
+	y1 = 1
+	y2 = 0
+	q = 0
+	r = 0
+
+	var x, y int64
+	x = 0
+	y = 0
+
+	for b > 0 {
+		q = a / b
+		r = a - q*b
+		x = x2 - q*x1
+		y = y2 - q*y1
+		a = b
+		b = r
+		x2 = x1
+		x1 = x
+		y2 = y1
+		y1 = y
+	}
+	return x2, y2, a
+}
+
+//InverseByMod ...
+func InverseByMod(number, module uint64) uint64 {
+	a, _, gcd := XGCDIterative(int64(number), int64(module))
+	if gcd == 1 {
+		for a < 0 {
+			a += int64(module)
+		}
+		return uint64(a)
+	}
+	return 0
 }
