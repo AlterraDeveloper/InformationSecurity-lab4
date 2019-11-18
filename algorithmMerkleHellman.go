@@ -34,6 +34,7 @@ func (key PrivateKey) generatePublicKey() []uint64 {
 func (key PrivateKey) SavePublicKeyToFile(fileName string) []uint64 {
 
 	file, _ := os.Create(fileName)
+	defer file.Close()
 
 	publicKey := key.generatePublicKey()
 
