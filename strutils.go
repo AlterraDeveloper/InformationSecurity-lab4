@@ -71,33 +71,3 @@ func PadLeft(text string, desiredLength int, placeholder string) string {
 	}
 	return str + text
 }
-
-//IntSliceToString ...
-func IntSliceToString(slice []uint64) string {
-	var runes []rune
-
-	for _, value := range slice {
-		tmp, _ := strconv.ParseUint("1111111111111111111111111111111100000000000000000000000000000000", 2, 64)
-		firstRune := rune((value & tmp) >> 32)
-		runes = append(runes, firstRune)
-		tmp, _ = strconv.ParseUint("11111111111111111111111111111111", 2, 64)
-		secondRune := rune(value & tmp)
-		runes = append(runes, secondRune)
-	}
-	return string(runes)
-}
-
-//StringToIntSlice ....
-func StringToIntSlice(str string) []uint64 {
-	runes := []rune(str)
-	var slice []uint64
-
-	for i := 0; i < len(runes); i += 2 {
-		var tmp uint64
-		tmp |= uint64(runes[i]) << 32
-		tmp |= uint64(runes[i+1])
-		slice = append(slice, tmp)
-	}
-
-	return slice
-}

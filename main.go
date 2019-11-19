@@ -3,20 +3,24 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"strconv"
 )
 
 func main() {
 
+	const KeyMinLen int = 4
+	const KeyMaxLen int = 100
+
 	var keyLengthInput string
 	var keyLength int = 0
 
 	for {
-		fmt.Print("Введите длину ключа[4-56]: ")
+		fmt.Printf("Введите длину ключа[%v-%v]: ", KeyMinLen, KeyMaxLen)
 		fmt.Scan(&keyLengthInput)
 		_keyLength, err := strconv.Atoi(keyLengthInput)
-		if err == nil && _keyLength >= 4 && _keyLength <= 56 {
+		if err == nil && _keyLength >= KeyMinLen && _keyLength <= KeyMaxLen {
 			keyLength = _keyLength
 			break
 		}
@@ -25,11 +29,10 @@ func main() {
 	fmt.Println("Генерация ключей...")
 	var privateKey PrivateKey
 	privateKey.Generate(keyLength)
-	publicKey := privateKey.SavePublicKeyToFile("public.txt")
 	fmt.Println("Ключи успешно сгенерированы")
+	fmt.Printf("Открытый ключ : %s\n", ToString(privateKey.PublicKey))
+	privateKey.SavePublicKeyToFile("public.txt")
 	fmt.Println("Открытый ключ сохранен в файле public.txt")
-	// fmt.Printf("Открытый ключ : %v\n", publicKey)
-	// fmt.Printf("Личный ключ : %+v\n", privateKey)
 
 	for {
 		var command string
@@ -48,12 +51,12 @@ func main() {
 				switch inputMethod {
 				case "1":
 					var filename string
-					fmt.Print("Введите имя файла : ")
+					fmt.Print("Введите имя файла содержимое которого хотите зашифровать : ")
 					fmt.Scan(&filename)
 					text = getTextFromFile(filename)
 				case "2":
 					scanner := bufio.NewScanner(os.Stdin)
-					fmt.Print("Введите текст : ")
+					fmt.Print("Введите текст который хотите зашифровать : ")
 					scanner.Scan()
 					text = scanner.Text()
 				}
@@ -62,52 +65,38 @@ func main() {
 				}
 			}
 
-			encryptedText := IntSliceToString(Encrypt(text, publicKey))
-			// fmt.Printf("Зашифрованный текст : %v\n", encryptedText)
-			fmt.Printf("Зашифрованный текст : %v\n", Encrypt(text, publicKey))
+			encryptedSequence := ToString(Encrypt(text, privateKey.PublicKey))
+			fmt.Printf("Зашифрованный текст : %v\n", encryptedSequence)
 			fmt.Print("Сохранить зашифрованный текст в файл? [Y/N] : ")
 			fmt.Scan(&inputMethod)
 			if inputMethod == "Y" || inputMethod == "y" {
 				var filename string
 				fmt.Print("Введите имя файла : ")
 				fmt.Scan(&filename)
-				saveTextToFile(filename, encryptedText)
+				saveTextToFile(filename, encryptedSequence)
 				fmt.Printf("Зашифрованный текст успешно сохранен в файл %v\n", filename)
 			}
 		}
 
 		if command == "2" {
 			var filename string
-			fmt.Print("Введите имя файла : ")
+			fmt.Print("Введите имя файла с зашифрованными данными : ")
 			fmt.Scan(&filename)
-			encryptedText := getTextFromFile(filename)
-			fmt.Printf("Расшифрованный текст : %v\n", Decrypt(StringToIntSlice(encryptedText), privateKey))
+			encryptedTSequence := StringToBigIntSlice(getTextFromFile(filename))
+			fmt.Printf("Расшифрованный текст :\n===================================\n%v\n===================================\n", Decrypt(encryptedTSequence, privateKey))
 
 		}
 	}
-
-	// fmt.Printf("Зашифрованный текст : %v\n", encryptionResult)
-	// fmt.Printf("Расшифрованный текст : %v\n", Decrypt(encryptionResult, privateKey))
-
-	// fmt.Printf("Зашифрованный текст в числовом виде : %v\n", StringToIntSlice(encryptionResultString))
-
 }
 
 func getTextFromFile(filename string) string {
 
-	file, err := os.Open(filename)
-	if err != nil {
-		panic(err)
-	}
-	defer file.Close()
-
-	bytes := make([]byte, 2000000, 2000000)
-	bytesRead, err := file.Read(bytes)
+	bytes, err := ioutil.ReadFile(filename)
 	if err != nil {
 		panic(err)
 	}
 
-	return string(bytes[:bytesRead])
+	return string(bytes)
 }
 
 func saveTextToFile(filename, text string) {

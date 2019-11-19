@@ -1,57 +1,52 @@
 package main
 
 import (
+	"math/big"
 	"math/rand"
 	"os"
-	"strconv"
 )
 
 //PrivateKey закрытый ключ
 type PrivateKey struct {
-	W []uint64
-	M uint64
-	X uint64
+	W         []big.Int
+	M         big.Int
+	X         big.Int
+	PublicKey []big.Int
 }
 
 //Generate private key
 func (key *PrivateKey) Generate(keyLength int) {
 	key.W = generateW(keyLength)
-	key.M = generateM(Sum(key.W))
-	key.X = uint64(rand.Int63n(int64(key.M/2))) + 2
+	key.M = *(Sum(key.W))
+	key.X = generateX(key.M)
+	key.PublicKey = key.generatePublicKey()
 }
 
-func (key PrivateKey) generatePublicKey() []uint64 {
-	var publicKey []uint64
+func (key PrivateKey) generatePublicKey() []big.Int {
+
+	var publicKey []big.Int
 
 	for _, w := range key.W {
-		publicKey = append(publicKey, (w*key.X)%key.M)
+		tmp := big.NewInt(0)
+		tmp = tmp.Mul(&w, &(key.X))
+		tmp = tmp.Mod(tmp, &(key.M))
+		publicKey = append(publicKey, *tmp)
 	}
 
 	return publicKey
 }
 
 //SavePublicKeyToFile saves generated public key to file and return it
-func (key PrivateKey) SavePublicKeyToFile(fileName string) []uint64 {
+func (key PrivateKey) SavePublicKeyToFile(fileName string) {
 
 	file, _ := os.Create(fileName)
 	defer file.Close()
 
-	publicKey := key.generatePublicKey()
-
-	for _, value := range publicKey {
-		var buffer []byte
-		buffer = strconv.AppendUint(buffer, value, 10)
-		_, _ = file.Write(buffer)
-		file.WriteString(" ")
-
-	}
-	return publicKey
+	file.WriteString(ToString(key.PublicKey))
 }
 
 //Encrypt text
-func Encrypt(originalText string, publicKey []uint64) []uint64 {
-
-	// var encryptedText string
+func Encrypt(originalText string, publicKey []big.Int) []big.Int {
 
 	keyLength := len(publicKey)
 
@@ -59,41 +54,42 @@ func Encrypt(originalText string, publicKey []uint64) []uint64 {
 
 	bitsStream := RunesToBits([]rune(increasedText))
 
-	var encryptedNums []uint64
+	var encryptedNums []big.Int
 
 	for i := 0; i < len(bitsStream); i += keyLength {
 
 		block := bitsStream[i : i+keyLength]
 
-		var sum uint64 = 0
+		sum := big.NewInt(0)
 		for i, bit := range block {
 			if bit == rune('1') {
-				sum += publicKey[i]
+				sum = big.NewInt(0).Add(sum, &(publicKey[i]))
 			}
 		}
 
-		encryptedNums = append(encryptedNums, sum)
+		encryptedNums = append(encryptedNums, *sum)
 	}
 
 	return encryptedNums
 }
 
 //Decrypt nums to text
-func Decrypt(nums []uint64, privateKey PrivateKey) string {
+func Decrypt(nums []big.Int, privateKey PrivateKey) string {
 
 	var bitsStream string
 
-	y := InverseByMod(privateKey.X, privateKey.M)
+	y := big.NewInt(0).ModInverse(&(privateKey.X), &(privateKey.M))
 
-	if (privateKey.X*y)%privateKey.M == 1 {
+	if y != nil {
 		for _, value := range nums {
 			var bits string
-			tmp := (value * y) % privateKey.M
-			for i := range privateKey.W {
-				current := privateKey.W[len(privateKey.W)-1-i]
-				if tmp >= current {
+			tmp := big.NewInt(0).Mul(&value, y)
+			tmp = big.NewInt(0).Mod(tmp, &(privateKey.M))
+			for i := len(privateKey.W) - 1; i >= 0; i-- {
+				current := privateKey.W[i]
+				if tmp.Cmp(&current) == 0 || tmp.Cmp(&current) == 1 {
 					bits += "1"
-					tmp -= current
+					tmp = big.NewInt(0).Sub(tmp, &current)
 				} else {
 					bits += "0"
 				}
@@ -107,24 +103,38 @@ func Decrypt(nums []uint64, privateKey PrivateKey) string {
 	return "Не удалось расшифровать..."
 }
 
-func generateW(length int) []uint64 {
-	var superIncreasingSequence []uint64
-	superIncreasingSequence = append(superIncreasingSequence, 1, 2)
+func generateW(length int) []big.Int {
 
-	for i := 2; i < length; i++ {
-		sum := Sum(superIncreasingSequence[:i])
-		next := uint64(rand.Int31n(10)) + sum + uint64(1)
-		superIncreasingSequence = append(superIncreasingSequence, next)
+	var superIncreasingSequence []big.Int
+
+	for i := 0; i < length; i++ {
+		next := big.NewInt(1).Lsh(big.NewInt(1), uint(i))
+		superIncreasingSequence = append(superIncreasingSequence, *next)
 	}
 	return superIncreasingSequence
 }
 
-func generateM(sumOfSequence uint64) uint64 {
-	for {
-		sumOfSequence++
-		if NumberIsSimple(sumOfSequence) {
-			break
-		}
+func generateX(keyM big.Int) big.Int {
+	genX := big.NewInt(0)
+	rand := rand.New(rand.NewSource(24111998))
+	divResult := genX.Div(&keyM, big.NewInt(2))
+	genX = genX.Rand(rand, divResult)
+	return *(genX.Add(genX, big.NewInt(2)))
+}
+
+//ToString represents private key as string
+func (key PrivateKey) ToString() string {
+	var output string
+
+	output += "M : "
+	output += key.M.String() + "\n"
+	output += "X : "
+	output += key.X.String() + "\n"
+	output += "W : "
+	for _, val := range key.W {
+		output += val.Text(10)
+		output += " "
 	}
-	return sumOfSequence
+
+	return output
 }
